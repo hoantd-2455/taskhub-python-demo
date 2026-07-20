@@ -1,1 +1,11 @@
-"""Pydantic request and response schemas are added from Day 2 onward."""
+from app.schemas.label import LabelCreate, LabelResponse, LabelUpdate
+from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
+
+__all__ = [
+    "LabelCreate",
+    "LabelResponse",
+    "LabelUpdate",
+    "ProjectCreate",
+    "ProjectResponse",
+    "ProjectUpdate",
+]
