@@ -1,1 +1,1 @@
-"""Database operations are added from Day 2 onward."""
+"""Database operations grouped by resource."""
