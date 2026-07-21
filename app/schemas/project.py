@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.models.enums import ProjectStatus
 from app.schemas.base import ORMResponseModel
+from app.schemas.task import TaskSummaryResponse
 
 
 class ProjectCreate(BaseModel):
@@ -30,3 +31,9 @@ class ProjectResponse(ORMResponseModel):
     description: str | None
     status: ProjectStatus
     created_at: datetime
+
+
+class ProjectWithTasksResponse(ProjectResponse):
+    """Project response with an eagerly loaded task collection."""
+
+    tasks: list[TaskSummaryResponse]

@@ -1,11 +1,17 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy import Enum as SqlEnum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 from app.models.enums import ProjectStatus
+
+if TYPE_CHECKING:
+    from app.models.label import Label
+    from app.models.task import Task
+    from app.models.workspace import Workspace
 
 
 class Project(Base):
@@ -30,4 +36,14 @@ class Project(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+    )
+
+    workspace: Mapped["Workspace"] = relationship(back_populates="projects")
+    tasks: Mapped[list["Task"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+    labels: Mapped[list["Label"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
     )

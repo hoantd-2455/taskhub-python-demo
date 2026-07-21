@@ -1,9 +1,14 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.task import Task
+    from app.models.user import User
 
 
 class Comment(Base):
@@ -26,3 +31,6 @@ class Comment(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+    task: Mapped["Task"] = relationship(back_populates="comments")
+    author: Mapped["User"] = relationship(back_populates="comments")

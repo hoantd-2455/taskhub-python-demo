@@ -1,5 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.models.project import Project
 
@@ -20,3 +21,11 @@ async def get_project_by_id(db: AsyncSession, project_id: int) -> Project | None
     statement = select(Project).where(Project.id == project_id)
     result = await db.scalars(statement)
     return result.one_or_none()
+
+
+async def get_project_with_tasks(db: AsyncSession, project_id: int) -> Project | None:
+    """Return a project and its tasks in one eager-loaded query."""
+
+    statement = select(Project).options(joinedload(Project.tasks)).where(Project.id == project_id)
+    result = await db.scalars(statement)
+    return result.unique().one_or_none()
