@@ -36,3 +36,24 @@ class TaskResponse(TaskSummaryResponse):
     description: str | None
     created_by: int
     created_at: datetime
+
+
+class TaskListParams(BaseModel):
+    """Optional filters and validated pagination for task-list endpoints."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: TaskStatus | None = None
+    priority: TaskPriority | None = None
+    assignee_id: int | None = Field(default=None, gt=0)
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class TaskListResponse(BaseModel):
+    """One page of tasks together with the pagination metadata."""
+
+    items: list[TaskResponse]
+    total: int = Field(ge=0)
+    page: int = Field(ge=1)
+    limit: int = Field(ge=1, le=100)
