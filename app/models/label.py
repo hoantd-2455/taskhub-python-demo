@@ -1,7 +1,13 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.project import Project
+    from app.models.task import Task
 
 
 class Label(Base):
@@ -16,6 +22,12 @@ class Label(Base):
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     color: Mapped[str] = mapped_column(String(7), nullable=False)
+
+    project: Mapped["Project"] = relationship(back_populates="labels")
+    tasks: Mapped[list["Task"]] = relationship(
+        secondary="task_labels",
+        back_populates="labels",
+    )
 
 
 class TaskLabel(Base):

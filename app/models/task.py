@@ -1,11 +1,18 @@
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, DateTime, ForeignKey, String, Text, func
 from sqlalchemy import Enum as SqlEnum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 from app.models.enums import TaskPriority, TaskStatus
+
+if TYPE_CHECKING:
+    from app.models.comment import Comment
+    from app.models.label import Label
+    from app.models.project import Project
+    from app.models.user import User
 
 
 class Task(Base):
@@ -46,4 +53,22 @@ class Task(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+    )
+
+    project: Mapped["Project"] = relationship(back_populates="tasks")
+    assignee: Mapped["User | None"] = relationship(
+        back_populates="assigned_tasks",
+        foreign_keys=[assignee_id],
+    )
+    creator: Mapped["User"] = relationship(
+        back_populates="created_tasks",
+        foreign_keys=[created_by],
+    )
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+    labels: Mapped[list["Label"]] = relationship(
+        secondary="task_labels",
+        back_populates="tasks",
     )
