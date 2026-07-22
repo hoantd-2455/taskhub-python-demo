@@ -3,6 +3,7 @@ from datetime import date, datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.security import create_access_token
 from app.crud import projects as project_crud
 from app.crud import tasks as task_crud
 from app.crud import users as user_crud
@@ -109,24 +110,27 @@ def test_create_task_returns_201(
     async def fake_get_user_by_id(_: object, __: int) -> User:
         return sample_user
 
-    async def fake_create_task(_: object, __: int, ___: object) -> Task:
+    async def fake_create_task(_: object, __: int, ___: object, ____: int) -> Task:
         return sample_task
 
     monkeypatch.setattr(project_crud, "get_project_by_id", fake_get_project_by_id)
     monkeypatch.setattr(user_crud, "get_user_by_id", fake_get_user_by_id)
     monkeypatch.setattr(task_crud, "create_task", fake_create_task)
 
+    task_body = {
+        "title": "Model relationships",
+        "description": "Connect Project and Task",
+        "priority": "HIGH",
+        "due_date": "2026-07-25",
+    }
+    unauthenticated = client.post("/api/v1/projects/1/tasks", json=task_body)
     response = client.post(
         "/api/v1/projects/1/tasks",
-        json={
-            "title": "Model relationships",
-            "description": "Connect Project and Task",
-            "priority": "HIGH",
-            "due_date": "2026-07-25",
-            "created_by": 1,
-        },
+        json=task_body,
+        headers={"Authorization": f"Bearer {create_access_token(sample_user.id)}"},
     )
 
+    assert unauthenticated.status_code == 401
     assert response.status_code == 201
     assert response.json()["project_id"] == 1
     assert response.json()["created_by"] == 1

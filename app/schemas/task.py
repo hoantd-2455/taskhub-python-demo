@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import TaskPriority, TaskStatus
 from app.schemas.base import ORMResponseModel
@@ -9,12 +9,13 @@ from app.schemas.base import ORMResponseModel
 class TaskCreate(BaseModel):
     """Validated input for creating a task inside a project."""
 
+    model_config = ConfigDict(extra="forbid")
+
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
     assignee_id: int | None = Field(default=None, gt=0)
     priority: TaskPriority = TaskPriority.MEDIUM
     due_date: date | None = None
-    created_by: int = Field(gt=0)
 
 
 class TaskSummaryResponse(ORMResponseModel):
