@@ -5,10 +5,15 @@ from app.models.task import Task
 from app.schemas.task import TaskCreate
 
 
-async def create_task(db: AsyncSession, project_id: int, task_in: TaskCreate) -> Task:
+async def create_task(
+    db: AsyncSession,
+    project_id: int,
+    task_in: TaskCreate,
+    created_by: int,
+) -> Task:
     """Create a task and roll back the transaction if the write fails."""
 
-    task = Task(project_id=project_id, **task_in.model_dump())
+    task = Task(project_id=project_id, created_by=created_by, **task_in.model_dump())
     db.add(task)
 
     try:
