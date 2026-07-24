@@ -6,7 +6,13 @@ from app.schemas.project import (
     ProjectUpdate,
     ProjectWithTasksResponse,
 )
-from app.schemas.task import TaskCreate, TaskResponse, TaskSummaryResponse
+from app.schemas.task import (
+    TaskCreate,
+    TaskListParams,
+    TaskListResponse,
+    TaskResponse,
+    TaskSummaryResponse,
+)
 from app.schemas.user import PasswordChange, UserProfileResponse, UserRegister, UserUpdate
 
 __all__ = [
@@ -20,6 +26,8 @@ __all__ = [
     "PasswordChange",
     "RefreshTokenRequest",
     "TaskCreate",
+    "TaskListParams",
+    "TaskListResponse",
     "TaskResponse",
     "TaskSummaryResponse",
     "TokenResponse",
