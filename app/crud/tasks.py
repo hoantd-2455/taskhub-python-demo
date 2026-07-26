@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import Select
 
 from app.models.project import Project
@@ -18,6 +19,15 @@ class TaskPage:
 
     items: list[Task]
     total: int
+
+
+async def get_task_with_project(db: AsyncSession, task_id: int) -> Task | None:
+    """Return one task with its project eagerly loaded for authorization checks."""
+
+    result = await db.scalars(
+        select(Task).options(joinedload(Task.project)).where(Task.id == task_id)
+    )
+    return result.one_or_none()
 
 
 async def create_task(
@@ -37,6 +47,19 @@ async def create_task(
         await db.rollback()
         raise
 
+    await db.refresh(task)
+    return task
+
+
+async def assign_task(db: AsyncSession, task: Task, assignee_id: int) -> Task:
+    """Assign a task and roll back if the write cannot be committed."""
+
+    task.assignee_id = assignee_id
+    try:
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        raise
     await db.refresh(task)
     return task
 

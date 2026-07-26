@@ -2,12 +2,13 @@
 
 TaskHub là REST API quản lý công việc, được xây dựng từng ngày theo tài liệu trong `docs/`.
 
-## Tiến độ ngày 1–5
+## Tiến độ ngày 1–6
 
 Đã có skeleton FastAPI async, model SQLAlchemy, Alembic, CRUD đọc cơ bản, quan hệ ORM/eager
 loading và xác thực JWT dưới namespace `/api/v1`. Day 4 bổ sung đăng ký, OAuth2 login, access
 token, refresh token có thể thu hồi, logout và các endpoint hồ sơ của người dùng. Day 5 bổ sung
-RBAC workspace cho task, filtering và pagination.
+RBAC workspace cho task, filtering và pagination. Day 6 bổ sung gán người phụ trách, bình luận
+và rollback transaction khi thao tác dữ liệu thất bại.
 
 ## Chạy cục bộ
 
@@ -61,7 +62,7 @@ lại bằng `docker start taskhub-postgres`.
 Access token mặc định có hạn 30 phút; refresh token có hạn 7 ngày. Có thể chỉnh hai giá trị này
 trong `.env` bằng `TASKHUB_ACCESS_TOKEN_EXPIRE_MINUTES` và `TASKHUB_REFRESH_TOKEN_EXPIRE_DAYS`.
 
-## Dữ liệu mẫu Day 5
+## Dữ liệu mẫu Day 5–6
 
 Sau migration, tạo dữ liệu mẫu để thực hành trên Swagger:
 
@@ -70,7 +71,8 @@ uv run python scripts/seed_example_data.py
 ```
 
 Xem tài khoản giả, ví dụ filter/pagination và các tình huống RBAC tại
-[`examples/day5-demo.md`](examples/day5-demo.md). Không dùng các tài khoản demo này ngoài môi trường local.
+[`examples/day5-demo.md`](examples/day5-demo.md), cùng các luồng gán task/bình luận tại
+[`examples/day6-demo.md`](examples/day6-demo.md). Không dùng các tài khoản demo này ngoài môi trường local.
 
 ## Kiểm tra chất lượng
 

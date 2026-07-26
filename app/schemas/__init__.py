@@ -1,4 +1,5 @@
 from app.schemas.auth import RefreshTokenRequest, TokenResponse
+from app.schemas.comment import CommentCreate, CommentResponse
 from app.schemas.label import LabelCreate, LabelResponse, LabelUpdate
 from app.schemas.project import (
     ProjectCreate,
@@ -7,6 +8,7 @@ from app.schemas.project import (
     ProjectWithTasksResponse,
 )
 from app.schemas.task import (
+    TaskAssign,
     TaskCreate,
     TaskListParams,
     TaskListResponse,
@@ -19,6 +21,8 @@ __all__ = [
     "LabelCreate",
     "LabelResponse",
     "LabelUpdate",
+    "CommentCreate",
+    "CommentResponse",
     "ProjectCreate",
     "ProjectResponse",
     "ProjectUpdate",
@@ -26,6 +30,7 @@ __all__ = [
     "PasswordChange",
     "RefreshTokenRequest",
     "TaskCreate",
+    "TaskAssign",
     "TaskListParams",
     "TaskListResponse",
     "TaskResponse",
