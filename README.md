@@ -32,10 +32,10 @@ Nếu cổng `54330` đã được sử dụng, chọn một cổng trống khá
 ```bash
 uv sync --extra dev
 cp .env.example .env
-openssl rand -hex 32
 export TASKHUB_DATABASE_URL='postgresql+asyncpg://taskhub:taskhub@127.0.0.1:54330/taskhub'
-export TASKHUB_JWT_SECRET_KEY='paste-the-random-value-here'
+export TASKHUB_JWT_SECRET_KEY="$(openssl rand -hex 32)"
 uv run alembic upgrade head
+uv run python scripts/seed_example_data.py
 uv run fastapi dev --host 127.0.0.1 --port 8000
 ```
 
@@ -43,10 +43,11 @@ uv run fastapi dev --host 127.0.0.1 --port 8000
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
 
-Thay chuỗi mẫu `TASKHUB_JWT_SECRET_KEY` trong `.env` bằng giá trị do `openssl rand -hex 32` tạo
-ra; không commit file `.env`. `TASKHUB_DATABASE_URL` trong `.env` phải trỏ đến PostgreSQL đang
-chạy trước khi chạy migration. Dừng database demo bằng `docker stop taskhub-postgres`; khởi động
-lại bằng `docker start taskhub-postgres`.
+Lệnh `export TASKHUB_JWT_SECRET_KEY="$(openssl rand -hex 32)"` tự tạo chuỗi bí mật hợp lệ và
+không cần sao chép thủ công. Hai lệnh `export` chỉ có hiệu lực trong terminal hiện tại; để dùng ở
+terminal khác, chạy lại chúng hoặc thay hai giá trị tương ứng trong `.env`. Không commit `.env`.
+Dừng database demo bằng `docker stop taskhub-postgres`; khởi động lại bằng
+`docker start taskhub-postgres`.
 
 ## Thử luồng xác thực Day 4
 
