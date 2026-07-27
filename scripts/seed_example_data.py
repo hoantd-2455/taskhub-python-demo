@@ -186,7 +186,10 @@ async def seed() -> None:
                         )
                     )
 
-    print("Demo data is ready. See examples/day6-demo.md for accounts and Swagger requests.")
+    print(
+        "Demo data is ready. See examples/day6-demo.md and examples/day7-demo.md "
+        "for Swagger requests."
+    )
 
 
 if __name__ == "__main__":

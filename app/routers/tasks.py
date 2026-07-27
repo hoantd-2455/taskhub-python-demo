@@ -1,8 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import get_redis_client
 from app.crud import comments as comment_crud
 from app.crud import tasks as task_crud
 from app.crud import users as user_crud
@@ -19,6 +21,8 @@ from app.models.enums import UserRole, WorkspaceRole
 from app.models.user import User
 from app.schemas.comment import CommentCreate, CommentResponse
 from app.schemas.task import TaskAssign, TaskCreate, TaskListParams, TaskListResponse, TaskResponse
+from app.services import task_cache
+from app.services.notifications import send_assignment_notification
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 project_tasks_router = APIRouter(prefix="/projects/{project_id}/tasks", tags=["tasks"])
@@ -81,11 +85,18 @@ async def list_project_tasks(
         ),
     ],
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Redis | None, Depends(get_redis_client)],
 ) -> TaskListResponse:
     """List one workspace project's tasks with filtering and validated pagination."""
 
+    cache_key = task_cache.build_project_task_list_cache_key(access.project.id, params)
+    cached_response = await task_cache.get_cached_project_task_list(redis, cache_key)
+    if cached_response is not None:
+        return cached_response
     page = await task_crud.get_project_task_page(db, access.project.id, params)
-    return task_page_response(page, params)
+    response = task_page_response(page, params)
+    await task_cache.cache_project_task_list(redis, cache_key, response)
+    return response
 
 
 @project_tasks_router.post(
@@ -106,6 +117,7 @@ async def create_task_for_project(
         Depends(require_project_roles(WorkspaceRole.OWNER, WorkspaceRole.EDITOR)),
     ],
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Redis | None, Depends(get_redis_client)],
 ) -> TaskResponse:
     """Create a task for an existing project as the authenticated user."""
 
@@ -125,6 +137,7 @@ async def create_task_for_project(
             )
 
     task = await task_crud.create_task(db, access.project.id, task_in, access.user.id)
+    await task_cache.invalidate_project_task_lists(redis, access.project.id)
     return TaskResponse.model_validate(task)
 
 
@@ -140,11 +153,13 @@ async def create_task_for_project(
 )
 async def assign_task(
     assignment: TaskAssign,
+    background_tasks: BackgroundTasks,
     access: Annotated[
         TaskAccess,
         Depends(require_task_roles(WorkspaceRole.OWNER, WorkspaceRole.EDITOR)),
     ],
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Redis | None, Depends(get_redis_client)],
 ) -> TaskResponse:
     """Assign a task to an active member of the task's parent workspace."""
 
@@ -162,6 +177,13 @@ async def assign_task(
             detail="Assignee must be a workspace member",
         )
     task = await task_crud.assign_task(db, access.task, assignee.id)
+    await task_cache.invalidate_project_task_lists(redis, access.project.id)
+    background_tasks.add_task(
+        send_assignment_notification,
+        recipient_email=assignee.email,
+        task_title=task.title,
+        project_name=access.project.name,
+    )
     return TaskResponse.model_validate(task)
 
 

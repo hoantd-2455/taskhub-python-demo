@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = False
     database_url: str = "postgresql+asyncpg://taskhub:taskhub@localhost:5432/taskhub"
+    redis_url: str | None = None
+    redis_task_list_ttl_seconds: int = Field(default=60, ge=1)
     jwt_secret_key: SecretStr = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = Field(default=30, ge=1)
