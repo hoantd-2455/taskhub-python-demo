@@ -18,6 +18,14 @@ class TaskCreate(BaseModel):
     due_date: date | None = None
 
 
+class TaskAssign(BaseModel):
+    """Validated request to assign a task to one workspace member."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    assignee_id: int = Field(gt=0)
+
+
 class TaskSummaryResponse(ORMResponseModel):
     """Task fields embedded in a project response."""
 

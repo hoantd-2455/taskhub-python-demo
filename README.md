@@ -2,12 +2,13 @@
 
 TaskHub là REST API quản lý công việc, được xây dựng từng ngày theo tài liệu trong `docs/`.
 
-## Tiến độ ngày 1–5
+## Tiến độ ngày 1–6
 
 Đã có skeleton FastAPI async, model SQLAlchemy, Alembic, CRUD đọc cơ bản, quan hệ ORM/eager
 loading và xác thực JWT dưới namespace `/api/v1`. Day 4 bổ sung đăng ký, OAuth2 login, access
 token, refresh token có thể thu hồi, logout và các endpoint hồ sơ của người dùng. Day 5 bổ sung
-RBAC workspace cho task, filtering và pagination.
+RBAC workspace cho task, filtering và pagination. Day 6 bổ sung gán người phụ trách, bình luận
+và rollback transaction khi thao tác dữ liệu thất bại.
 
 ## Chạy cục bộ
 
@@ -31,10 +32,10 @@ Nếu cổng `54330` đã được sử dụng, chọn một cổng trống khá
 ```bash
 uv sync --extra dev
 cp .env.example .env
-openssl rand -hex 32
 export TASKHUB_DATABASE_URL='postgresql+asyncpg://taskhub:taskhub@127.0.0.1:54330/taskhub'
-export TASKHUB_JWT_SECRET_KEY='paste-the-random-value-here'
+export TASKHUB_JWT_SECRET_KEY="$(openssl rand -hex 32)"
 uv run alembic upgrade head
+uv run python scripts/seed_example_data.py
 uv run fastapi dev --host 127.0.0.1 --port 8000
 ```
 
@@ -42,10 +43,11 @@ uv run fastapi dev --host 127.0.0.1 --port 8000
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
 
-Thay chuỗi mẫu `TASKHUB_JWT_SECRET_KEY` trong `.env` bằng giá trị do `openssl rand -hex 32` tạo
-ra; không commit file `.env`. `TASKHUB_DATABASE_URL` trong `.env` phải trỏ đến PostgreSQL đang
-chạy trước khi chạy migration. Dừng database demo bằng `docker stop taskhub-postgres`; khởi động
-lại bằng `docker start taskhub-postgres`.
+Lệnh `export TASKHUB_JWT_SECRET_KEY="$(openssl rand -hex 32)"` tự tạo chuỗi bí mật hợp lệ và
+không cần sao chép thủ công. Hai lệnh `export` chỉ có hiệu lực trong terminal hiện tại; để dùng ở
+terminal khác, chạy lại chúng hoặc thay hai giá trị tương ứng trong `.env`. Không commit `.env`.
+Dừng database demo bằng `docker stop taskhub-postgres`; khởi động lại bằng
+`docker start taskhub-postgres`.
 
 ## Thử luồng xác thực Day 4
 
@@ -61,7 +63,7 @@ lại bằng `docker start taskhub-postgres`.
 Access token mặc định có hạn 30 phút; refresh token có hạn 7 ngày. Có thể chỉnh hai giá trị này
 trong `.env` bằng `TASKHUB_ACCESS_TOKEN_EXPIRE_MINUTES` và `TASKHUB_REFRESH_TOKEN_EXPIRE_DAYS`.
 
-## Dữ liệu mẫu Day 5
+## Dữ liệu mẫu Day 5–6
 
 Sau migration, tạo dữ liệu mẫu để thực hành trên Swagger:
 
@@ -70,7 +72,8 @@ uv run python scripts/seed_example_data.py
 ```
 
 Xem tài khoản giả, ví dụ filter/pagination và các tình huống RBAC tại
-[`examples/day5-demo.md`](examples/day5-demo.md). Không dùng các tài khoản demo này ngoài môi trường local.
+[`examples/day5-demo.md`](examples/day5-demo.md), cùng các luồng gán task/bình luận tại
+[`examples/day6-demo.md`](examples/day6-demo.md). Không dùng các tài khoản demo này ngoài môi trường local.
 
 ## Kiểm tra chất lượng
 

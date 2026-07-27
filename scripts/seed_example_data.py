@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.security import hash_password  # noqa: E402
 from app.database import AsyncSessionLocal  # noqa: E402
+from app.models.comment import Comment  # noqa: E402
 from app.models.enums import (  # noqa: E402
     TaskPriority,
     TaskStatus,
@@ -148,19 +149,44 @@ async def seed() -> None:
                     select(Task).where(Task.project_id == project.id, Task.title == title)
                 )
                 if task is None:
+                    task = Task(
+                        project_id=project.id,
+                        title=title,
+                        status=status,
+                        priority=priority,
+                        assignee_id=assignee_id,
+                        due_date=due_date,
+                        created_by=owner.id,
+                    )
+                    session.add(task)
+                    await session.flush()
+
+            commented_task = await session.scalar(
+                select(Task).where(
+                    Task.project_id == project.id,
+                    Task.title == "Review API permissions",
+                )
+            )
+            if commented_task is not None:
+                comment_content = (
+                    "Editor note: verify that only authors, owners, and admins can delete comments."
+                )
+                comment = await session.scalar(
+                    select(Comment).where(
+                        Comment.task_id == commented_task.id,
+                        Comment.content == comment_content,
+                    )
+                )
+                if comment is None:
                     session.add(
-                        Task(
-                            project_id=project.id,
-                            title=title,
-                            status=status,
-                            priority=priority,
-                            assignee_id=assignee_id,
-                            due_date=due_date,
-                            created_by=owner.id,
+                        Comment(
+                            task_id=commented_task.id,
+                            author_id=editor.id,
+                            content=comment_content,
                         )
                     )
 
-    print("Demo data is ready. See examples/day5-demo.md for accounts and Swagger requests.")
+    print("Demo data is ready. See examples/day6-demo.md for accounts and Swagger requests.")
 
 
 if __name__ == "__main__":
