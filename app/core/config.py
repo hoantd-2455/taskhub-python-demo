@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://taskhub:taskhub@localhost:5432/taskhub"
     redis_url: str | None = None
     redis_task_list_ttl_seconds: int = Field(default=60, ge=1)
+    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    log_level: str = "INFO"
     jwt_secret_key: SecretStr = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = Field(default=30, ge=1)

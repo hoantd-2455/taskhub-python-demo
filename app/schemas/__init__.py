@@ -14,8 +14,16 @@ from app.schemas.task import (
     TaskListResponse,
     TaskResponse,
     TaskSummaryResponse,
+    TaskUpdate,
 )
 from app.schemas.user import PasswordChange, UserProfileResponse, UserRegister, UserUpdate
+from app.schemas.workspace import (
+    WorkspaceCreate,
+    WorkspaceMemberCreate,
+    WorkspaceMemberResponse,
+    WorkspaceResponse,
+    WorkspaceUpdate,
+)
 
 __all__ = [
     "LabelCreate",
@@ -31,6 +39,7 @@ __all__ = [
     "RefreshTokenRequest",
     "TaskCreate",
     "TaskAssign",
+    "TaskUpdate",
     "TaskListParams",
     "TaskListResponse",
     "TaskResponse",
@@ -39,4 +48,9 @@ __all__ = [
     "UserProfileResponse",
     "UserRegister",
     "UserUpdate",
+    "WorkspaceCreate",
+    "WorkspaceMemberCreate",
+    "WorkspaceMemberResponse",
+    "WorkspaceResponse",
+    "WorkspaceUpdate",
 ]

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import get_redis_client
 from app.crud import comments as comment_crud
+from app.crud import labels as label_crud
 from app.crud import tasks as task_crud
 from app.crud import users as user_crud
 from app.crud import workspaces as workspace_crud
@@ -20,7 +21,15 @@ from app.dependencies.authorization import (
 from app.models.enums import UserRole, WorkspaceRole
 from app.models.user import User
 from app.schemas.comment import CommentCreate, CommentResponse
-from app.schemas.task import TaskAssign, TaskCreate, TaskListParams, TaskListResponse, TaskResponse
+from app.schemas.label import LabelResponse
+from app.schemas.task import (
+    TaskAssign,
+    TaskCreate,
+    TaskListParams,
+    TaskListResponse,
+    TaskResponse,
+    TaskUpdate,
+)
 from app.services import task_cache
 from app.services.notifications import send_assignment_notification
 
@@ -123,7 +132,7 @@ async def create_task_for_project(
 
     if task_in.assignee_id is not None:
         assignee = await user_crud.get_user_by_id(db, task_in.assignee_id)
-        if assignee is None:
+        if assignee is None or not assignee.is_active:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignee not found")
         assignee_membership = await workspace_crud.get_workspace_member(
             db,
@@ -185,6 +194,140 @@ async def assign_task(
         project_name=access.project.name,
     )
     return TaskResponse.model_validate(task)
+
+
+@router.patch(
+    "/{task_id}",
+    response_model=TaskResponse,
+    responses={
+        401: {"description": "Authentication required"},
+        403: {"description": "Owner or editor role required"},
+        404: {"description": "Task or assignee not found"},
+        422: {"description": "Assignee is outside the workspace"},
+    },
+)
+async def update_task(
+    task_in: TaskUpdate,
+    background_tasks: BackgroundTasks,
+    access: Annotated[
+        TaskAccess,
+        Depends(require_task_roles(WorkspaceRole.OWNER, WorkspaceRole.EDITOR)),
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Redis | None, Depends(get_redis_client)],
+) -> TaskResponse:
+    """Update task fields after validating any newly selected assignee."""
+
+    assignee: User | None = None
+    if "assignee_id" in task_in.model_fields_set and task_in.assignee_id is not None:
+        assignee = await user_crud.get_user_by_id(db, task_in.assignee_id)
+        if assignee is None or not assignee.is_active:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignee not found")
+        membership = await workspace_crud.get_workspace_member(
+            db,
+            workspace_id=access.project.workspace_id,
+            user_id=assignee.id,
+        )
+        if membership is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Assignee must be a workspace member",
+            )
+    task = await task_crud.update_task(db, access.task, task_in)
+    await task_cache.invalidate_project_task_lists(redis, access.project.id)
+    if assignee is not None:
+        background_tasks.add_task(
+            send_assignment_notification,
+            recipient_email=assignee.email,
+            task_title=task.title,
+            project_name=access.project.name,
+        )
+    return TaskResponse.model_validate(task)
+
+
+@router.delete(
+    "/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    responses={
+        401: {"description": "Authentication required"},
+        403: {"description": "Owner or editor role required"},
+        404: {"description": "Task not found"},
+    },
+)
+async def delete_task(
+    access: Annotated[
+        TaskAccess,
+        Depends(require_task_roles(WorkspaceRole.OWNER, WorkspaceRole.EDITOR)),
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Redis | None, Depends(get_redis_client)],
+) -> Response:
+    """Delete a task and invalidate cached task-list pages for its project."""
+
+    await task_crud.delete_task(db, access.task)
+    await task_cache.invalidate_project_task_lists(redis, access.project.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{task_id}/labels/{label_id}",
+    response_model=LabelResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        401: {"description": "Authentication required"},
+        403: {"description": "Owner or editor role required"},
+        404: {"description": "Task or label not found"},
+    },
+)
+async def add_label_to_task(
+    label_id: int,
+    access: Annotated[
+        TaskAccess,
+        Depends(require_task_roles(WorkspaceRole.OWNER, WorkspaceRole.EDITOR)),
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Redis | None, Depends(get_redis_client)],
+) -> LabelResponse:
+    """Attach only a label from the task's own project."""
+
+    label = await label_crud.get_label_for_project(db, access.project.id, label_id)
+    if label is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found")
+    await label_crud.add_label_to_task(db, access.task.id, label.id)
+    await task_cache.invalidate_project_task_lists(redis, access.project.id)
+    return LabelResponse.model_validate(label)
+
+
+@router.delete(
+    "/{task_id}/labels/{label_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    responses={
+        401: {"description": "Authentication required"},
+        403: {"description": "Owner or editor role required"},
+        404: {"description": "Task, label, or task-label link not found"},
+    },
+)
+async def remove_label_from_task(
+    label_id: int,
+    access: Annotated[
+        TaskAccess,
+        Depends(require_task_roles(WorkspaceRole.OWNER, WorkspaceRole.EDITOR)),
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Redis | None, Depends(get_redis_client)],
+) -> Response:
+    """Remove a label link only when the label belongs to the task project."""
+
+    label = await label_crud.get_label_for_project(db, access.project.id, label_id)
+    if label is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found")
+    removed = await label_crud.remove_label_from_task(db, access.task.id, label.id)
+    if not removed:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task label not found")
+    await task_cache.invalidate_project_task_lists(redis, access.project.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

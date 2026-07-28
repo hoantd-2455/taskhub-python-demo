@@ -187,8 +187,8 @@ async def seed() -> None:
                     )
 
     print(
-        "Demo data is ready. See examples/day6-demo.md and examples/day7-demo.md "
-        "for Swagger requests."
+        "Demo data is ready. See examples/day6-demo.md, examples/day7-demo.md, and "
+        "examples/day8-demo.md for Swagger requests."
     )
 
 

@@ -14,6 +14,7 @@ from app.models.enums import UserRole, WorkspaceRole
 from app.models.project import Project
 from app.models.task import Task
 from app.models.user import User
+from app.models.workspace import Workspace
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,19 @@ class ProjectAccess:
     """Authenticated caller's access context for a project and its workspace."""
 
     project: Project
+    user: User
+    workspace_role: WorkspaceRole | None
+
+    @property
+    def is_admin(self) -> bool:
+        return self.user.role == UserRole.ADMIN
+
+
+@dataclass(frozen=True)
+class WorkspaceAccess:
+    """Authenticated caller's access context for one workspace."""
+
+    workspace: Workspace
     user: User
     workspace_role: WorkspaceRole | None
 
@@ -41,6 +55,53 @@ class TaskAccess:
     @property
     def is_admin(self) -> bool:
         return self.user.role == UserRole.ADMIN
+
+
+async def get_workspace_access(
+    workspace_id: int,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> WorkspaceAccess:
+    """Verify that the caller belongs to the requested workspace."""
+
+    workspace = await workspace_crud.get_workspace_by_id(db, workspace_id)
+    if workspace is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+    if current_user.role == UserRole.ADMIN:
+        return WorkspaceAccess(workspace=workspace, user=current_user, workspace_role=None)
+    membership = await workspace_crud.get_workspace_member(
+        db,
+        workspace_id=workspace.id,
+        user_id=current_user.id,
+    )
+    if membership is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Workspace membership required",
+        )
+    return WorkspaceAccess(
+        workspace=workspace,
+        user=current_user,
+        workspace_role=membership.role,
+    )
+
+
+def require_workspace_roles(
+    *allowed_roles: WorkspaceRole,
+) -> Callable[[WorkspaceAccess], Awaitable[WorkspaceAccess]]:
+    """Create a dependency that permits an admin or selected workspace roles."""
+
+    async def dependency(
+        access: Annotated[WorkspaceAccess, Depends(get_workspace_access)],
+    ) -> WorkspaceAccess:
+        if access.is_admin or access.workspace_role in allowed_roles:
+            return access
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient workspace role",
+        )
+
+    return dependency
 
 
 async def get_project_access(

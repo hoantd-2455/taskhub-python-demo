@@ -26,6 +26,19 @@ class TaskAssign(BaseModel):
     assignee_id: int = Field(gt=0)
 
 
+class TaskUpdate(BaseModel):
+    """Validated partial task update, including status, priority and due date."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    assignee_id: int | None = Field(default=None, gt=0)
+    status: TaskStatus | None = None
+    priority: TaskPriority | None = None
+    due_date: date | None = None
+
+
 class TaskSummaryResponse(ORMResponseModel):
     """Task fields embedded in a project response."""
 
