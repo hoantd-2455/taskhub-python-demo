@@ -10,7 +10,7 @@ from sqlalchemy.sql import Select
 from app.models.project import Project
 from app.models.task import Task
 from app.models.workspace import WorkspaceMember
-from app.schemas.task import TaskCreate, TaskListParams
+from app.schemas.task import TaskCreate, TaskListParams, TaskUpdate
 
 
 @dataclass(frozen=True)
@@ -62,6 +62,31 @@ async def assign_task(db: AsyncSession, task: Task, assignee_id: int) -> Task:
         raise
     await db.refresh(task)
     return task
+
+
+async def update_task(db: AsyncSession, task: Task, task_in: TaskUpdate) -> Task:
+    """Apply supplied task fields and roll back if the update cannot be committed."""
+
+    for field_name, value in task_in.model_dump(exclude_unset=True).items():
+        setattr(task, field_name, value)
+    try:
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        raise
+    await db.refresh(task)
+    return task
+
+
+async def delete_task(db: AsyncSession, task: Task) -> None:
+    """Delete one task atomically."""
+
+    await db.delete(task)
+    try:
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        raise
 
 
 def apply_task_filters(statement: Select[Any], params: TaskListParams) -> Select[Any]:
