@@ -2,13 +2,14 @@
 
 TaskHub là REST API quản lý công việc, được xây dựng từng ngày theo tài liệu trong `docs/`.
 
-## Tiến độ ngày 1–6
+## Tiến độ ngày 1–7
 
 Đã có skeleton FastAPI async, model SQLAlchemy, Alembic, CRUD đọc cơ bản, quan hệ ORM/eager
 loading và xác thực JWT dưới namespace `/api/v1`. Day 4 bổ sung đăng ký, OAuth2 login, access
 token, refresh token có thể thu hồi, logout và các endpoint hồ sơ của người dùng. Day 5 bổ sung
 RBAC workspace cho task, filtering và pagination. Day 6 bổ sung gán người phụ trách, bình luận
-và rollback transaction khi thao tác dữ liệu thất bại.
+và rollback transaction khi thao tác dữ liệu thất bại. Day 7 bổ sung cache Redis cho danh sách
+task theo project, invalidation sau khi task thay đổi và notification nền khi gán task.
 
 ## Chạy cục bộ
 
@@ -49,6 +50,22 @@ terminal khác, chạy lại chúng hoặc thay hai giá trị tương ứng tro
 Dừng database demo bằng `docker stop taskhub-postgres`; khởi động lại bằng
 `docker start taskhub-postgres`.
 
+### 3. Bật Redis cho cache Day 7 (tùy chọn)
+
+API vẫn hoạt động khi không có Redis, chỉ không cache danh sách task. Để bật cache local:
+
+```bash
+docker run --detach --name taskhub-redis \
+  --publish 127.0.0.1:6379:6379 \
+  redis:7-alpine
+export TASKHUB_REDIS_URL='redis://127.0.0.1:6379/0'
+```
+
+Sau đó gọi cùng một `GET /api/v1/projects/{project_id}/tasks` hai lần với cùng filter và
+phân trang: lần đầu đọc PostgreSQL, lần sau đọc Redis. Tạo task hoặc gán người phụ trách sẽ xóa
+toàn bộ cache task-list của project đó. Khi gán task, ứng dụng chạy background task ghi một email
+notification mô phỏng vào log; chưa kết nối SMTP thật trong Day 7.
+
 ## Thử luồng xác thực Day 4
 
 1. Mở `http://127.0.0.1:8000/docs`, gọi `POST /api/v1/auth/register` với email, `full_name` và
@@ -73,7 +90,8 @@ uv run python scripts/seed_example_data.py
 
 Xem tài khoản giả, ví dụ filter/pagination và các tình huống RBAC tại
 [`examples/day5-demo.md`](examples/day5-demo.md), cùng các luồng gán task/bình luận tại
-[`examples/day6-demo.md`](examples/day6-demo.md). Không dùng các tài khoản demo này ngoài môi trường local.
+[`examples/day6-demo.md`](examples/day6-demo.md), và cache/notification tại
+[`examples/day7-demo.md`](examples/day7-demo.md). Không dùng các tài khoản demo này ngoài môi trường local.
 
 ## Kiểm tra chất lượng
 
